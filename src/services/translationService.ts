@@ -1,51 +1,35 @@
-import { request } from 'https';
+import fetch from 'node-fetch'; 
+import 'dotenv/config'; 
 
-const API_KEY = 'AIzaSyB1_ZkNIf7MhqDCetPE2bQMv764YTGw6Vs';
+console.log(process.env.GOOGLE_API_KEY);
 
-export const translateText = (text: string, targetLanguage: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    if (!text || !targetLanguage) {
-      reject('Text and targetLanguage are required');
-    }
+export const translateText = async (text: string, targetLanguage: string): Promise<string> => {
+  const API_KEY = process.env.GOOGLE_API_KEY;
+  const url = `https://translation.googleapis.com/language/translate/v2?key=${API_KEY}`;  
 
-    const postData = JSON.stringify({
-      q: text,
-      target: targetLanguage,
-    });
+  const postData = {
+    q: text,
+    target: targetLanguage,
+  };
 
-    const options = {
-      hostname: 'translation.googleapis.com',
-      path: `/language/translate/v2?key=${API_KEY}`,
+  try {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData),
       },
-    };
-
-    const req = request(options, (res) => {
-      let data = '';
-
-      res.on('data', (chunk) => {
-        data += chunk.toString();
-      });
-
-      res.on('end', () => {
-        try {
-          const parsedData = JSON.parse(data);
-          const translatedText = parsedData.data.translations[0].translatedText;
-          resolve(translatedText);
-        } catch (error) {
-          reject('Error parsing response: ' + error);
-        }
-      });
+      body: JSON.stringify(postData),
     });
 
-    req.on('error', (e) => {
-      reject(`Request failed: ${e.message}`);
-    });
+    if (!response.ok) {
+      throw new Error(`Response status: ${response.status}`);
+    }
 
-    req.write(postData);
-    req.end();
-  });
+    const json = await response.json();
+    const translatedText = json.data.translations[0].translatedText;
+    return translatedText;
+  } catch (error) {
+    console.error(error);
+    throw new Error('Translation failed');
+  }
 };
